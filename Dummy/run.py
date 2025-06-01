@@ -7,6 +7,7 @@ import utils
 import cv2
 import argparse
 import time
+import tempfile
 
 import numpy as np
 
@@ -102,8 +103,8 @@ def create_side_by_side(image, depth, grayscale):
         return np.concatenate((image, right_side), axis=1)
 
 
-def run(input_path, output_path, model_path, model_type="dpt_beit_large_512", optimize=False, side=False, height=None,
-        square=False, grayscale=False):
+def run(input_path, output_path, model_path, model_type="dpt_beit_base_384", optimize=False, side=False, height=None,
+        square=False, grayscale=True):
     """Run MonoDepthNN to compute depth maps.
 
     Args:
@@ -225,7 +226,7 @@ if __name__ == "__main__":
                         )
 
     parser.add_argument('-t', '--model_type',
-                        default='dpt_beit_large_512',
+                        default=None,
                         help='Model type: '
                              'dpt_beit_large_512, dpt_beit_large_384, dpt_beit_base_384, dpt_swin2_large_384, '
                              'dpt_swin2_base_384, dpt_swin2_tiny_256, dpt_swin_large_384, dpt_next_vit_large_384, '
@@ -266,11 +267,31 @@ if __name__ == "__main__":
 
 
     if args.model_weights is None:
-        args.model_weights = default_models[args.model_type]
+        args.model_weights = default_models["dpt_beit_base_384"]
 
     # set torch options
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True
+
+    tmp_dir = tempfile.gettempdir()
+
+    # Define input and output directories inside temp
+    input_path = os.path.join(tmp_dir, "input_depth_map")
+    output_path = os.path.join(tmp_dir, "output_depth_map")
+
+    if args.input_path is None:
+        args.input_path = input_path
+    
+    if args.output_path is None:
+        args.output_path = output_path
+
+    if args.model_type is None:
+        args.model_type = "dpt_beit_base_384"
+
+
+    # Ensure directories exist
+    os.makedirs(input_path, exist_ok=True)
+    os.makedirs(output_path, exist_ok=True)
 
     # compute depth maps
     run(args.input_path, args.output_path, args.model_weights, args.model_type, args.optimize, args.side, args.height,
